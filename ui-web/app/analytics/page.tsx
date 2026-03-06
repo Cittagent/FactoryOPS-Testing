@@ -20,11 +20,11 @@ type Preset = "quick" | "recommended" | "deep" | "custom";
 type ResultType = AnomalyFormattedResult | FailureFormattedResult | FleetFormattedResult;
 
 const COLORS = {
-  bg: "#070b14",
-  panel: "#0c1220",
-  panelBorder: "rgba(147, 156, 184, 0.18)",
-  text: "#eef4ff",
-  muted: "rgba(210, 220, 240, 0.62)",
+  bg: "#f8fafc",
+  panel: "#ffffff",
+  panelBorder: "rgba(148, 163, 184, 0.3)",
+  text: "#1e293b",
+  muted: "rgba(71, 85, 105, 0.8)",
   accent: "#6366f1",
   good: "#22c55e",
   warn: "#f59e0b",
@@ -70,9 +70,9 @@ function badgeColor(level: string): string {
 
 function StepDots({ step }: { step: number }) {
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
       {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} style={{ width: 34, height: 34, borderRadius: 17, display: "grid", placeItems: "center", fontSize: 12, fontWeight: 700, color: "white", background: step === i ? COLORS.accent : step > i ? COLORS.good : "rgba(255,255,255,0.1)" }}>
+        <div key={i} style={{ width: 20, height: 20, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 600, color: "white", background: step === i ? COLORS.accent : step > i ? COLORS.good : "#cbd5e1" }}>
           {step > i ? "✓" : i}
         </div>
       ))}
@@ -230,36 +230,36 @@ function AnalyticsPageContent() {
   if (screen === "wizard") {
     return (
       <div style={{ minHeight: "100vh", width: "100%", overflowX: "hidden", background: COLORS.bg, color: COLORS.text, fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
-        <div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 24px 40px", boxSizing: "border-box" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 26 }}>
+        <div style={{ maxWidth: 700, margin: "0 auto", padding: "16px 16px 24px", boxSizing: "border-box" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
             <div>
-              <div style={{ color: COLORS.muted, fontSize: 12, letterSpacing: 2, textTransform: "uppercase" }}>Machine Intelligence</div>
-              <h1 style={{ margin: "8px 0 0", fontSize: 24 }}>Premium ML Analytics</h1>
+              <div style={{ color: COLORS.muted, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase" }}>Analytics</div>
+              <h1 style={{ margin: "4px 0 0", fontSize: 18, color: COLORS.text }}>Run AI-powered analytics on your machine data</h1>
             </div>
             <StepDots step={step} />
           </div>
 
-          <div style={{ background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 16, padding: 24 }}>
+          <div style={{ background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 10, padding: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
             {step === 1 && (
               <>
-                <h2 style={{ marginTop: 0, marginBottom: 8, fontSize: 20 }}>Select Scope</h2>
-                <div style={{ color: COLORS.muted, marginBottom: 18 }}>Which machines do you want to analyse?</div>
+                <h2 style={{ marginTop: 0, marginBottom: 6, fontSize: 14, color: COLORS.text }}>Select Scope</h2>
+                <div style={{ color: COLORS.muted, marginBottom: 10, fontSize: 12 }}>Which machines to analyse?</div>
 
                 {[
-                  { id: "all", name: "All Machines", subtitle: `Comparative analysis across all ${devices.length} devices` },
-                  ...devices.map((d) => ({ id: d.id, name: d.name || d.id, subtitle: "Single device deep-dive" })),
+                  { id: "all", name: "All Machines", subtitle: `All ${devices.length} devices` },
+                  ...devices.map((d) => ({ id: d.id, name: d.name || d.id, subtitle: "Single device" })),
                 ].map((d) => (
                   <button
                     key={d.id}
                     onClick={() => setSelectedDevice(d.id)}
-                    style={{ width: "100%", textAlign: "left", background: selectedDevice === d.id ? "rgba(99,102,241,0.14)" : "rgba(12,18,30,0.8)", color: "white", border: `1px solid ${selectedDevice === d.id ? "#6366f1" : COLORS.panelBorder}`, borderRadius: 14, padding: 18, marginBottom: 10, cursor: "pointer" }}
+                    style={{ width: "100%", textAlign: "left", background: selectedDevice === d.id ? "rgba(99,102,241,0.1)" : "#f1f5f9", color: COLORS.text, border: `1px solid ${selectedDevice === d.id ? "#6366f1" : COLORS.panelBorder}`, borderRadius: 8, padding: 10, marginBottom: 6, cursor: "pointer" }}
                   >
-                    <div style={{ fontSize: 16, fontWeight: 700 }}>{d.name}</div>
-                    <div style={{ color: COLORS.muted, marginTop: 4 }}>{d.subtitle}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{d.name}</div>
+                    <div style={{ color: COLORS.muted, marginTop: 2, fontSize: 11 }}>{d.subtitle}</div>
                   </button>
                 ))}
 
-                <button onClick={() => setStep(2)} style={{ marginTop: 10, width: "100%", padding: 12, borderRadius: 12, border: "none", background: COLORS.accent, color: "white", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>
+                <button onClick={() => setStep(2)} style={{ marginTop: 6, width: "100%", padding: 8, borderRadius: 8, border: "none", background: COLORS.accent, color: "white", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
                   Continue
                 </button>
               </>
@@ -267,10 +267,10 @@ function AnalyticsPageContent() {
 
             {step === 2 && (
               <>
-                <h2 style={{ marginTop: 0, marginBottom: 8, fontSize: 20 }}>Select Date Range</h2>
-                <div style={{ color: COLORS.muted, marginBottom: 18 }}>How much telemetry data to include?</div>
+                <h2 style={{ marginTop: 0, marginBottom: 6, fontSize: 14, color: COLORS.text }}>Select Date Range</h2>
+                <div style={{ color: COLORS.muted, marginBottom: 10, fontSize: 12 }}>How much telemetry data?</div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
                   {(["quick", "recommended", "deep", "custom"] as Preset[]).map((p) => {
                     const range = p === "custom" ? dateRange : getPresetRange(p);
                     return (
@@ -280,92 +280,85 @@ function AnalyticsPageContent() {
                           setPreset(p);
                           if (p !== "custom") setDateRange(range);
                         }}
-                        style={{ textAlign: "left", background: preset === p ? "rgba(99,102,241,0.14)" : "rgba(12,18,30,0.8)", color: "white", border: `1px solid ${preset === p ? "#6366f1" : COLORS.panelBorder}`, borderRadius: 14, padding: 16, cursor: "pointer" }}
+                        style={{ textAlign: "left", background: preset === p ? "rgba(99,102,241,0.1)" : "#f1f5f9", color: COLORS.text, border: `1px solid ${preset === p ? "#6366f1" : COLORS.panelBorder}`, borderRadius: 8, padding: 8, cursor: "pointer" }}
                       >
-                        <div style={{ color: "#818cf8", letterSpacing: 2, textTransform: "uppercase", fontSize: 12, fontWeight: 700 }}>{p}</div>
-                        <div style={{ marginTop: 8, fontSize: 18, fontWeight: 700 }}>{PRESET_LABELS[p]}</div>
-                        <div style={{ color: COLORS.muted, marginTop: 6 }}>{range.start} → {range.end}</div>
+                        <div style={{ color: COLORS.accent, letterSpacing: 1, textTransform: "uppercase", fontSize: 9, fontWeight: 600 }}>{p}</div>
+                        <div style={{ marginTop: 3, fontSize: 12, fontWeight: 600 }}>{PRESET_LABELS[p]}</div>
+                        <div style={{ color: COLORS.muted, marginTop: 2, fontSize: 10 }}>{range.start} → {range.end}</div>
                       </button>
                     );
                   })}
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <div>
-                    <div style={{ fontSize: 12, color: COLORS.muted, letterSpacing: 1 }}>FROM</div>
-                    <input type="date" value={dateRange.start} onChange={(e) => { setPreset("custom"); setDateRange((r) => ({ ...r, start: e.target.value })); }} style={{ marginTop: 8, width: "100%", padding: 12, borderRadius: 10, border: `1px solid ${COLORS.panelBorder}`, background: "#0a101b", color: "white" }} />
+                    <div style={{ fontSize: 10, color: COLORS.muted, letterSpacing: 1 }}>FROM</div>
+                    <input type="date" value={dateRange.start} onChange={(e) => { setPreset("custom"); setDateRange((r) => ({ ...r, start: e.target.value })); }} style={{ marginTop: 4, width: "100%", padding: 6, borderRadius: 6, border: `1px solid ${COLORS.panelBorder}`, background: "white", color: COLORS.text, fontSize: 11 }} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: COLORS.muted, letterSpacing: 1 }}>TO</div>
-                    <input type="date" value={dateRange.end} onChange={(e) => { setPreset("custom"); setDateRange((r) => ({ ...r, end: e.target.value })); }} style={{ marginTop: 8, width: "100%", padding: 12, borderRadius: 10, border: `1px solid ${COLORS.panelBorder}`, background: "#0a101b", color: "white" }} />
+                    <div style={{ fontSize: 10, color: COLORS.muted, letterSpacing: 1 }}>TO</div>
+                    <input type="date" value={dateRange.end} onChange={(e) => { setPreset("custom"); setDateRange((r) => ({ ...r, end: e.target.value })); }} style={{ marginTop: 4, width: "100%", padding: 6, borderRadius: 6, border: `1px solid ${COLORS.panelBorder}`, background: "white", color: COLORS.text, fontSize: 11 }} />
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
-                  <button onClick={() => setStep(1)} style={{ padding: "12px 20px", borderRadius: 12, border: `1px solid ${COLORS.panelBorder}`, background: "#151c29", color: "white", fontWeight: 700, cursor: "pointer" }}>Back</button>
-                  <button onClick={() => setStep(3)} style={{ flex: 1, padding: "12px 20px", borderRadius: 12, border: "none", background: COLORS.accent, color: "white", fontWeight: 800, cursor: "pointer" }}>Continue</button>
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <button onClick={() => setStep(1)} style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${COLORS.panelBorder}`, background: "white", color: COLORS.text, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>Back</button>
+                  <button onClick={() => setStep(3)} style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "none", background: COLORS.accent, color: "white", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>Continue</button>
                 </div>
               </>
             )}
 
             {step === 3 && (
               <>
-                <h2 style={{ marginTop: 0, marginBottom: 8, fontSize: 20 }}>Analysis Type</h2>
-                <div style={{ color: COLORS.muted, marginBottom: 18 }}>What do you want to discover?</div>
+                <h2 style={{ marginTop: 0, marginBottom: 6, fontSize: 14, color: COLORS.text }}>Analysis Type</h2>
+                <div style={{ color: COLORS.muted, marginBottom: 10, fontSize: 12 }}>What to discover?</div>
 
-                <button onClick={() => setAnalysisType("anomaly")} style={{ width: "100%", textAlign: "left", background: analysisType === "anomaly" ? "rgba(99,102,241,0.14)" : "rgba(12,18,30,0.8)", color: "white", border: `1px solid ${analysisType === "anomaly" ? "#6366f1" : COLORS.panelBorder}`, borderRadius: 14, padding: 18, marginBottom: 10, cursor: "pointer" }}>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>Anomaly Detection</div>
-                  <div style={{ color: COLORS.muted, marginTop: 4 }}>Find unusual patterns, spikes, drops, and correlated deviations across parameters.</div>
+                <button onClick={() => setAnalysisType("anomaly")} style={{ width: "100%", textAlign: "left", background: analysisType === "anomaly" ? "rgba(99,102,241,0.1)" : "#f1f5f9", color: COLORS.text, border: `1px solid ${analysisType === "anomaly" ? "#6366f1" : COLORS.panelBorder}`, borderRadius: 8, padding: 10, marginBottom: 6, cursor: "pointer" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>Anomaly Detection</div>
+                  <div style={{ color: COLORS.muted, marginTop: 2, fontSize: 11 }}>Find unusual patterns, spikes, drops.</div>
                 </button>
 
-                <button onClick={() => setAnalysisType("failure_prediction")} style={{ width: "100%", textAlign: "left", background: analysisType === "failure_prediction" ? "rgba(99,102,241,0.14)" : "rgba(12,18,30,0.8)", color: "white", border: `1px solid ${analysisType === "failure_prediction" ? "#6366f1" : COLORS.panelBorder}`, borderRadius: 14, padding: 18, cursor: "pointer" }}>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>Failure Prediction</div>
-                  <div style={{ color: COLORS.muted, marginTop: 4 }}>Predict failure probability, remaining useful life, risk factors, and maintenance urgency.</div>
+                <button onClick={() => setAnalysisType("failure_prediction")} style={{ width: "100%", textAlign: "left", background: analysisType === "failure_prediction" ? "rgba(99,102,241,0.1)" : "#f1f5f9", color: COLORS.text, border: `1px solid ${analysisType === "failure_prediction" ? "#6366f1" : COLORS.panelBorder}`, borderRadius: 8, padding: 10, cursor: "pointer" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>Failure Prediction</div>
+                  <div style={{ color: COLORS.muted, marginTop: 2, fontSize: 11 }}>Predict failure probability, remaining life.</div>
                 </button>
 
-                {error && <div style={{ marginTop: 12, color: COLORS.bad }}>{error}</div>}
+                {error && <div style={{ marginTop: 8, color: COLORS.bad, fontSize: 11 }}>{error}</div>}
 
-                <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
-                  <button onClick={() => setStep(2)} style={{ padding: "12px 20px", borderRadius: 12, border: `1px solid ${COLORS.panelBorder}`, background: "#151c29", color: "white", fontWeight: 700, cursor: "pointer" }}>Back</button>
-                  <button onClick={submit} disabled={!analysisType} style={{ flex: 1, padding: "12px 20px", borderRadius: 12, border: "none", background: COLORS.accent, color: "white", fontWeight: 800, cursor: !analysisType ? "not-allowed" : "pointer", opacity: analysisType ? 1 : 0.55 }}>Run Analysis</button>
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <button onClick={() => setStep(2)} style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${COLORS.panelBorder}`, background: "white", color: COLORS.text, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>Back</button>
+                  <button onClick={submit} disabled={!analysisType} style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "none", background: COLORS.accent, color: "white", fontWeight: 600, fontSize: 12, cursor: !analysisType ? "not-allowed" : "pointer", opacity: analysisType ? 1 : 0.55 }}>Run Analysis</button>
                 </div>
               </>
             )}
 
             {step === 4 && (
-              <div style={{ minHeight: 520, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px 0" }}>
-                <div style={{ width: "100%", maxWidth: 640, textAlign: "center" }}>
-                  <div style={{ color: "#818cf8", letterSpacing: 4, textTransform: "uppercase", fontWeight: 700, marginBottom: 26, fontSize: 14 }}>
+              <div style={{ minHeight: 180, display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0" }}>
+                <div style={{ width: "100%", maxWidth: 260, textAlign: "center" }}>
+                  <div style={{ color: COLORS.accent, letterSpacing: 1, textTransform: "uppercase", fontWeight: 600, marginBottom: 12, fontSize: 10 }}>
                     Running {analysisType === "anomaly" ? "Anomaly Detection" : "Failure Prediction"}
                   </div>
-                  <div style={{ width: 190, height: 190, borderRadius: 95, border: "12px solid rgba(255,255,255,0.08)", margin: "0 auto", position: "relative" }}>
-                    <svg width="190" height="190" style={{ position: "absolute", inset: 0 }}>
-                      <circle cx="95" cy="95" r="83" fill="none" stroke="url(#g)" strokeWidth="12" strokeLinecap="round" strokeDasharray={`${Math.max(1, progress) * 5.22} 522`} transform="rotate(-90 95 95)" />
-                      <defs>
-                        <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#6366f1" />
-                          <stop offset="100%" stopColor="#a78bfa" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                    <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontSize: 30, fontWeight: 800 }}>{progress}%</div>
+                  <div style={{ width: 80, height: 80, borderRadius: "50%", border: "5px solid #e2e8f0", margin: "0 auto 12px", position: "relative", boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ position: "absolute", width: 80, height: 80, borderRadius: "50%", border: "5px solid transparent", borderTopColor: COLORS.accent, animation: "spin 1s linear infinite" }} />
+                    <span style={{ fontSize: 16, fontWeight: 700, color: COLORS.text }}>{progress}%</span>
                   </div>
-                  <div style={{ marginTop: 22, fontSize: 14, color: COLORS.muted }}>{progressMsg}</div>
-                  <div style={{ marginTop: 18, color: "rgba(180,194,220,0.4)", fontSize: 12 }}>{selectedDevice.toUpperCase()} · {dateRange.start} → {dateRange.end}</div>
+                  <div style={{ fontSize: 11, color: COLORS.muted }}>{progressMsg}</div>
+                  <div style={{ marginTop: 6, color: COLORS.muted, fontSize: 10, opacity: 0.7 }}>{selectedDevice.toUpperCase()} · {dateRange.start} → {dateRange.end}</div>
                 </div>
+                <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
               </div>
             )}
 
             {step === 5 && (
-              <div style={{ textAlign: "center", padding: "26px 0 8px" }}>
-                <div style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>Analysis Complete</div>
-                <div style={{ color: COLORS.muted, marginBottom: 20, fontSize: 14 }}>
+              <div style={{ textAlign: "center", padding: "14px 0 6px" }}>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6, color: COLORS.text }}>Analysis Complete</div>
+                <div style={{ color: COLORS.muted, marginBottom: 12, fontSize: 11 }}>
                   {result?.analysis_type === "anomaly_detection" && `${result.summary.total_anomalies} anomalies · ${result.summary.health_impact} impact`}
                   {result?.analysis_type === "failure_prediction" && `${result.summary.failure_probability_pct.toFixed(1)}% failure probability · ${result.summary.failure_risk} risk`}
                   {result?.analysis_type === "fleet" && `${result.device_summaries.length} devices analysed`}
                 </div>
-                <button onClick={goDashboard} style={{ width: "100%", padding: 12, borderRadius: 12, border: "none", background: COLORS.accent, color: "white", fontWeight: 700, fontSize: 16, cursor: "pointer", marginBottom: 10 }}>View Dashboard</button>
-                <button onClick={reset} style={{ width: "100%", padding: 12, borderRadius: 12, border: `1px solid ${COLORS.panelBorder}`, background: "#151c29", color: "white", fontWeight: 700, cursor: "pointer" }}>Run Another Analysis</button>
+                <button onClick={goDashboard} style={{ width: "100%", padding: 8, borderRadius: 8, border: "none", background: COLORS.accent, color: "white", fontWeight: 600, fontSize: 13, cursor: "pointer", marginBottom: 6 }}>View Dashboard</button>
+                <button onClick={reset} style={{ width: "100%", padding: 8, borderRadius: 8, border: `1px solid ${COLORS.panelBorder}`, background: "white", color: COLORS.text, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>Run Another Analysis</button>
               </div>
             )}
           </div>
@@ -382,22 +375,22 @@ function AnalyticsPageContent() {
     const pageStart = (anomalyPage - 1) * 10;
     const anomalyRows = result.anomaly_list.slice(pageStart, pageStart + 10);
     return (
-      <div style={{ minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "'DM Sans','Segoe UI',sans-serif", padding: 16 }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gap: 10 }}>
-          <button onClick={reset} style={{ justifySelf: "start", padding: "6px 10px", borderRadius: 8, border: `1px solid ${COLORS.panelBorder}`, background: "#151c29", color: "white", cursor: "pointer", fontSize: 13 }}>New Analysis</button>
+      <div style={{ minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "'DM Sans','Segoe UI',sans-serif", padding: 12 }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", display: "grid", gap: 8 }}>
+          <button onClick={reset} style={{ justifySelf: "start", padding: "5px 8px", borderRadius: 6, border: `1px solid ${COLORS.panelBorder}`, background: "white", color: COLORS.text, cursor: "pointer", fontSize: 11 }}>New Analysis</button>
           {confidence && (
-            <div style={{ background: "rgba(16,24,38,0.9)", border: `1px solid ${confidence.badge_color}`, borderRadius: 12, padding: 12, color: confidence.badge_color, fontWeight: 700 }}>
+            <div style={{ background: COLORS.panel, border: `1px solid ${confidence.badge_color}`, borderRadius: 8, padding: 8, color: confidence.badge_color, fontWeight: 600, fontSize: 12 }}>
               {confidence.banner_text}
             </div>
           )}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 8 }}>
             <Stat label="Total Anomalies" value={String(result.summary.total_anomalies)} />
             <Stat label="Anomaly Rate" value={`${result.summary.anomaly_rate_pct}%`} />
             <Stat label="Anomaly Score" value={`${result.summary.anomaly_score}/100`} />
             <Stat label="Health Impact" value={result.summary.health_impact} />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <div style={panelStyle()}>
               <h3 style={titleStyle()}>Anomaly Rate Gauge</h3>
               <RadialGauge
@@ -411,22 +404,22 @@ function AnalyticsPageContent() {
             </div>
             <div style={panelStyle()}>
               <h3 style={titleStyle()}>Period Summary</h3>
-              <div style={{ color: COLORS.muted, fontSize: 13, marginBottom: 8 }}>
-                Most affected parameter: <b style={{ color: COLORS.text }}>{result.summary.most_affected_parameter}</b>
+              <div style={{ color: COLORS.muted, fontSize: 11, marginBottom: 6 }}>
+                Most affected: <b style={{ color: COLORS.text }}>{result.summary.most_affected_parameter}</b>
               </div>
-              <div style={{ color: COLORS.muted, fontSize: 13 }}>
-                Data points analyzed: <b style={{ color: COLORS.text }}>{result.summary.data_points_analyzed}</b>
+              <div style={{ color: COLORS.muted, fontSize: 11 }}>
+                Data points: <b style={{ color: COLORS.text }}>{result.summary.data_points_analyzed}</b>
               </div>
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 8 }}>
             <div style={panelStyle()}>
               <h3 style={titleStyle()}>Anomalies Over Time</h3>
               {result.anomalies_over_time.map((d) => (
-                <div key={d.date} style={{ marginBottom: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.muted }}><span>{d.date}</span><span>{d.count}</span></div>
-                  <div style={{ height: 10, background: "rgba(255,255,255,0.08)", borderRadius: 8, overflow: "hidden", display: "flex" }}>
+                <div key={d.date} style={{ marginBottom: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: COLORS.muted }}><span>{d.date}</span><span>{d.count}</span></div>
+                  <div style={{ height: 8, background: "#e2e8f0", borderRadius: 6, overflow: "hidden", display: "flex" }}>
                     <div style={{ width: `${d.count ? (d.high_count / d.count) * 100 : 0}%`, background: COLORS.bad }} />
                     <div style={{ width: `${d.count ? (d.medium_count / d.count) * 100 : 0}%`, background: COLORS.warn }} />
                     <div style={{ width: `${d.count ? (d.low_count / d.count) * 100 : 0}%`, background: COLORS.good }} />
@@ -437,10 +430,10 @@ function AnalyticsPageContent() {
             <div style={panelStyle()}>
               <h3 style={titleStyle()}>Affected Parameters</h3>
               {result.parameter_breakdown.map((p) => (
-                <div key={p.parameter} style={{ marginBottom: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}><span>{p.parameter}</span><b>{p.anomaly_count}</b></div>
-                  <div style={{ height: 10, background: "rgba(255,255,255,0.08)", borderRadius: 8 }}>
-                    <div style={{ height: "100%", width: `${(p.anomaly_count / maxParam) * 100}%`, background: "#60a5fa", borderRadius: 8 }} />
+                <div key={p.parameter} style={{ marginBottom: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 2 }}><span>{p.parameter}</span><b>{p.anomaly_count}</b></div>
+                  <div style={{ height: 8, background: "#e2e8f0", borderRadius: 6 }}>
+                    <div style={{ height: "100%", width: `${(p.anomaly_count / maxParam) * 100}%`, background: "#3b82f6", borderRadius: 6 }} />
                   </div>
                 </div>
               ))}
@@ -450,29 +443,29 @@ function AnalyticsPageContent() {
           <div style={panelStyle()}>
             <h3 style={titleStyle()}>Anomaly Detail List</h3>
             {anomalyRows.map((a, i) => (
-              <div key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 210px", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: 13 }}>
-                <span style={{ color: a.severity === "high" ? COLORS.bad : a.severity === "medium" ? COLORS.warn : COLORS.good, fontWeight: 700 }}>{a.severity.toUpperCase()}</span>
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "70px 1fr 140px", gap: 8, padding: "6px 0", borderBottom: "1px solid #e2e8f0", fontSize: 11 }}>
+                <span style={{ color: a.severity === "high" ? COLORS.bad : a.severity === "medium" ? COLORS.warn : COLORS.good, fontWeight: 600 }}>{a.severity.toUpperCase()}</span>
                 <span>{a.context}</span>
                 <span style={{ color: COLORS.muted }}>{a.recommended_action}</span>
               </div>
             ))}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-              <span style={{ color: COLORS.muted, fontSize: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+              <span style={{ color: COLORS.muted, fontSize: 10 }}>
                 Showing {result.anomaly_list.length === 0 ? 0 : pageStart + 1}-{Math.min(pageStart + 10, result.anomaly_list.length)} of {result.anomaly_list.length}
               </span>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 6 }}>
                 <button
                   onClick={() => setAnomalyPage((p) => Math.max(1, p - 1))}
                   disabled={anomalyPage <= 1}
-                  style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${COLORS.panelBorder}`, background: "#151c29", color: "white", cursor: anomalyPage <= 1 ? "not-allowed" : "pointer", opacity: anomalyPage <= 1 ? 0.5 : 1 }}
+                  style={{ padding: "4px 8px", borderRadius: 6, border: `1px solid ${COLORS.panelBorder}`, background: "white", color: COLORS.text, cursor: anomalyPage <= 1 ? "not-allowed" : "pointer", opacity: anomalyPage <= 1 ? 0.5 : 1, fontSize: 10 }}
                 >
                   Prev
                 </button>
-                <span style={{ color: COLORS.muted, fontSize: 12, alignSelf: "center" }}>Page {anomalyPage}/{anomalyPages}</span>
+                <span style={{ color: COLORS.muted, fontSize: 10, alignSelf: "center" }}>Page {anomalyPage}/{anomalyPages}</span>
                 <button
                   onClick={() => setAnomalyPage((p) => Math.min(anomalyPages, p + 1))}
                   disabled={anomalyPage >= anomalyPages}
-                  style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${COLORS.panelBorder}`, background: "#151c29", color: "white", cursor: anomalyPage >= anomalyPages ? "not-allowed" : "pointer", opacity: anomalyPage >= anomalyPages ? 0.5 : 1 }}
+                  style={{ padding: "4px 8px", borderRadius: 6, border: `1px solid ${COLORS.panelBorder}`, background: "white", color: COLORS.text, cursor: anomalyPage >= anomalyPages ? "not-allowed" : "pointer", opacity: anomalyPage >= anomalyPages ? 0.5 : 1, fontSize: 10 }}
                 >
                   Next
                 </button>
@@ -481,12 +474,12 @@ function AnalyticsPageContent() {
           </div>
 
           <div style={panelStyle()}>
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", fontSize: 11 }}>
               <div style={{ color: COLORS.muted }}>
-                📅 Days Analysed: <b style={{ color: COLORS.text }}>{formatDaysAnalysed(result.summary.days_analyzed)}</b>
+                Days Analysed: <b style={{ color: COLORS.text }}>{formatDaysAnalysed(result.summary.days_analyzed)}</b>
               </div>
               <div style={{ color: COLORS.good }}>
-                ✅ Completion: <b>100%</b>
+                Completion: <b>100%</b>
               </div>
             </div>
           </div>
@@ -500,22 +493,22 @@ function AnalyticsPageContent() {
     const failurePct = result.summary.failure_probability_pct;
     const safePct = result.summary.safe_probability_pct ?? Math.max(0, 100 - failurePct);
     return (
-      <div style={{ minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "'DM Sans','Segoe UI',sans-serif", padding: 16 }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gap: 10 }}>
-          <button onClick={reset} style={{ justifySelf: "start", padding: "6px 10px", borderRadius: 8, border: `1px solid ${COLORS.panelBorder}`, background: "#151c29", color: "white", cursor: "pointer", fontSize: 13 }}>New Analysis</button>
+      <div style={{ minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "'DM Sans','Segoe UI',sans-serif", padding: 12 }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", display: "grid", gap: 8 }}>
+          <button onClick={reset} style={{ justifySelf: "start", padding: "5px 8px", borderRadius: 6, border: `1px solid ${COLORS.panelBorder}`, background: "white", color: COLORS.text, cursor: "pointer", fontSize: 11 }}>New Analysis</button>
           {confidence && (
-            <div style={{ background: "rgba(16,24,38,0.9)", border: `1px solid ${confidence.badge_color}`, borderRadius: 12, padding: 12, color: confidence.badge_color, fontWeight: 700 }}>
+            <div style={{ background: COLORS.panel, border: `1px solid ${confidence.badge_color}`, borderRadius: 8, padding: 8, color: confidence.badge_color, fontWeight: 600, fontSize: 12 }}>
               {confidence.banner_text}
             </div>
           )}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 8 }}>
             <Stat label="Risk Level" value={result.summary.failure_risk} />
             <Stat label="Failure Probability" value={`${result.summary.failure_probability_pct.toFixed(1)}%`} />
             <Stat label="Remaining Life" value={result.summary.estimated_remaining_life} />
             <Stat label="Maintenance" value={result.summary.maintenance_urgency} />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <div style={panelStyle()}>
               <h3 style={titleStyle()}>Failure Probability Meter</h3>
               <RadialGauge
@@ -524,24 +517,24 @@ function AnalyticsPageContent() {
                 max={100}
                 color={failurePct < 35 ? COLORS.good : failurePct < 60 ? COLORS.warn : COLORS.bad}
                 label={`${failurePct.toFixed(1)}%`}
-                subtitle="0% healthy → 100% imminent failure"
+                subtitle="0% healthy → 100% imminent"
               />
             </div>
             <div style={panelStyle()}>
               <h3 style={titleStyle()}>Contributing Risk Factors</h3>
               {result.insufficient_trend_signal ? (
-                <div style={{ color: COLORS.warn }}>No significant trend signal yet. Continue collecting telemetry for stronger prediction reliability.</div>
+                <div style={{ color: COLORS.warn, fontSize: 11 }}>No significant trend signal yet.</div>
               ) : (
                 result.risk_factors.slice(0, 6).map((rf, i) => (
-                  <div key={`${rf.parameter}-${i}`} style={{ padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: 13 }}>
+                  <div key={`${rf.parameter}-${i}`} style={{ padding: "4px 0", borderBottom: "1px solid #e2e8f0", fontSize: 11 }}>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <b>{rf.parameter}</b>
                       <span>{rf.contribution_pct}%</span>
                     </div>
-                    <div style={{ height: 6, background: "rgba(255,255,255,0.08)", borderRadius: 8, margin: "5px 0 6px" }}>
-                      <div style={{ height: "100%", width: `${Math.min(100, rf.contribution_pct)}%`, background: "#f59e0b", borderRadius: 8 }} />
+                    <div style={{ height: 5, background: "#e2e8f0", borderRadius: 4, margin: "3px 0 4px" }}>
+                      <div style={{ height: "100%", width: `${Math.min(100, rf.contribution_pct)}%`, background: "#f59e0b", borderRadius: 4 }} />
                     </div>
-                    <div style={{ color: COLORS.muted, fontSize: 12 }}>{rf.context}</div>
+                    <div style={{ color: COLORS.muted, fontSize: 10 }}>{rf.context}</div>
                   </div>
                 ))
               )}
@@ -550,27 +543,27 @@ function AnalyticsPageContent() {
 
           <div style={panelStyle()}>
             <h3 style={titleStyle()}>Failure vs Safe Breakdown</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 16, alignItems: "center" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 10, alignItems: "center" }}>
               <DonutChart
                 segments={[
                   { value: failurePct, color: COLORS.bad, label: "Failure" },
                   { value: safePct, color: COLORS.good, label: "Safe" },
                 ]}
-                size={150}
-                inner={68}
+                size={80}
+                inner={35}
               />
-              <div style={{ display: "grid", gap: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", color: COLORS.muted }}>
+              <div style={{ display: "grid", gap: 4 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", color: COLORS.muted, fontSize: 11 }}>
                   <span>Failure</span><b style={{ color: COLORS.bad }}>{failurePct.toFixed(1)}%</b>
                 </div>
-                <div style={{ height: 10, background: "rgba(255,255,255,0.08)", borderRadius: 8 }}>
-                  <div style={{ width: `${failurePct}%`, height: "100%", background: COLORS.bad, borderRadius: 8 }} />
+                <div style={{ height: 6, background: "#e2e8f0", borderRadius: 4 }}>
+                  <div style={{ width: `${failurePct}%`, height: "100%", background: COLORS.bad, borderRadius: 4 }} />
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", color: COLORS.muted }}>
+                <div style={{ display: "flex", justifyContent: "space-between", color: COLORS.muted, fontSize: 11 }}>
                   <span>Safe</span><b style={{ color: COLORS.good }}>{safePct.toFixed(1)}%</b>
                 </div>
-                <div style={{ height: 10, background: "rgba(255,255,255,0.08)", borderRadius: 8 }}>
-                  <div style={{ width: `${safePct}%`, height: "100%", background: COLORS.good, borderRadius: 8 }} />
+                <div style={{ height: 6, background: "#e2e8f0", borderRadius: 4 }}>
+                  <div style={{ width: `${safePct}%`, height: "100%", background: COLORS.good, borderRadius: 4 }} />
                 </div>
               </div>
             </div>
@@ -579,13 +572,13 @@ function AnalyticsPageContent() {
           <div style={panelStyle()}>
             <h3 style={titleStyle()}>Recommended Actions</h3>
             {result.recommended_actions.length === 0 && (
-              <div style={{ color: COLORS.muted }}>No immediate actions generated yet. Continue telemetry collection and re-run analysis.</div>
+              <div style={{ color: COLORS.muted, fontSize: 11 }}>No immediate actions generated yet.</div>
             )}
             {result.recommended_actions.map((r) => (
-              <div key={r.rank} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div key={r.rank} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "6px 0", borderBottom: "1px solid #e2e8f0", fontSize: 11 }}>
                 <div>
                   <b>{r.rank}. {r.action}</b>
-                  <div style={{ color: COLORS.muted, fontSize: 12 }}>{r.reasoning}</div>
+                  <div style={{ color: COLORS.muted, fontSize: 10 }}>{r.reasoning}</div>
                 </div>
                 <span style={{ color: COLORS.warn }}>{r.urgency}</span>
               </div>
@@ -593,12 +586,12 @@ function AnalyticsPageContent() {
           </div>
 
           <div style={panelStyle()}>
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", fontSize: 11 }}>
               <div style={{ color: COLORS.muted }}>
-                📅 Days Analysed: <b style={{ color: COLORS.text }}>{formatDaysAnalysed(result.summary.days_analyzed)}</b>
+                Days Analysed: <b style={{ color: COLORS.text }}>{formatDaysAnalysed(result.summary.days_analyzed)}</b>
               </div>
               <div style={{ color: COLORS.good }}>
-                ✅ Completion: <b>100%</b>
+                Completion: <b>100%</b>
               </div>
             </div>
           </div>
@@ -609,10 +602,10 @@ function AnalyticsPageContent() {
 
   if (screen === "fleet" && result && result.analysis_type === "fleet") {
     return (
-      <div style={{ minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "'DM Sans','Segoe UI',sans-serif", padding: 16 }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gap: 10 }}>
-          <button onClick={reset} style={{ justifySelf: "start", padding: "6px 10px", borderRadius: 8, border: `1px solid ${COLORS.panelBorder}`, background: "#151c29", color: "white", cursor: "pointer", fontSize: 13 }}>New Analysis</button>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 12 }}>
+      <div style={{ minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "'DM Sans','Segoe UI',sans-serif", padding: 12 }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", display: "grid", gap: 8 }}>
+          <button onClick={reset} style={{ justifySelf: "start", padding: "5px 8px", borderRadius: 6, border: `1px solid ${COLORS.panelBorder}`, background: "white", color: COLORS.text, cursor: "pointer", fontSize: 11 }}>New Analysis</button>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 8 }}>
             <Stat label="Fleet Health" value={`${result.fleet_health_score}%`} />
             <Stat label="Worst Device" value={result.worst_device_id || "N/A"} />
             <Stat label="Critical Devices" value={String(result.critical_devices.length)} />
@@ -620,7 +613,7 @@ function AnalyticsPageContent() {
           <div style={panelStyle()}>
             <h3 style={titleStyle()}>Device Summaries</h3>
             {result.device_summaries.map((d) => (
-              <div key={d.device_id} style={{ display: "grid", gridTemplateColumns: "1fr 160px 140px", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: 13 }}>
+              <div key={d.device_id} style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px", gap: 8, padding: "6px 0", borderBottom: "1px solid #e2e8f0", fontSize: 11 }}>
                 <b>{d.device_id}</b>
                 <span>Health {d.health_score}%</span>
                 <span>{d.failure_risk || `${d.total_anomalies || 0} anomalies`}</span>
@@ -639,23 +632,23 @@ function panelStyle(): React.CSSProperties {
   return {
     background: COLORS.panel,
     border: `1px solid ${COLORS.panelBorder}`,
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: 8,
+    padding: 10,
   };
 }
 
 function titleStyle(): React.CSSProperties {
   return {
-    margin: "0 0 10px",
-    fontSize: 14,
+    margin: "0 0 8px",
+    fontSize: 12,
   };
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 10, padding: 10 }}>
-      <div style={{ fontSize: 11, color: COLORS.muted }}>{label}</div>
-      <div style={{ marginTop: 2, fontSize: 18, fontWeight: 800, color: badgeColor(value) }}>{value}</div>
+    <div style={{ background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 8, padding: 8 }}>
+      <div style={{ fontSize: 10, color: COLORS.muted }}>{label}</div>
+      <div style={{ marginTop: 1, fontSize: 14, fontWeight: 700, color: badgeColor(value) }}>{value}</div>
     </div>
   );
 }
@@ -679,22 +672,22 @@ function RadialGauge({
   const ratio = (clamped - min) / Math.max(1e-6, max - min);
   const sweep = 270;
   const rotate = -225;
-  const dash = 471;
+  const dash = 235;
   const filled = dash * (ratio * (sweep / 360));
   return (
-    <div style={{ display: "grid", placeItems: "center", padding: "6px 0 10px" }}>
-      <div style={{ position: "relative", width: 180, height: 180 }}>
-        <svg width="180" height="180">
-          <g transform={`rotate(${rotate} 90 90)`}>
-            <circle cx="90" cy="90" r="75" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="14" strokeDasharray={`${dash * (sweep / 360)} ${dash}`} strokeLinecap="round" />
-            <circle cx="90" cy="90" r="75" fill="none" stroke={color} strokeWidth="14" strokeDasharray={`${filled} ${dash}`} strokeLinecap="round" />
+    <div style={{ display: "grid", placeItems: "center", padding: "4px 0 6px" }}>
+      <div style={{ position: "relative", width: 90, height: 90 }}>
+        <svg width="90" height="90">
+          <g transform={`rotate(${rotate} 45 45)`}>
+            <circle cx="45" cy="45" r="37" fill="none" stroke="#e2e8f0" strokeWidth="7" strokeDasharray={`${dash * (sweep / 360)} ${dash}`} strokeLinecap="round" />
+            <circle cx="45" cy="45" r="37" fill="none" stroke={color} strokeWidth="7" strokeDasharray={`${filled} ${dash}`} strokeLinecap="round" />
           </g>
         </svg>
-        <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center" }}>
-          <div style={{ fontSize: 28, fontWeight: 800, color }}>{label}</div>
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color }}>{label}</div>
         </div>
       </div>
-      <div style={{ color: COLORS.muted, fontSize: 12, marginTop: -12 }}>{subtitle}</div>
+      <div style={{ color: COLORS.muted, fontSize: 9, marginTop: -6 }}>{subtitle}</div>
     </div>
   );
 }
