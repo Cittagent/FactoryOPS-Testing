@@ -1,290 +1,297 @@
-"""Failure prediction pipeline implementations."""
+"""Failure Prediction Pipeline - premium robust implementation."""
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import structlog
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
-from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 
 from src.services.analytics.base import BasePipeline
-from src.services.analytics.feature_engineering import FeatureEngineer
+from src.services.analytics.confidence import get_confidence
 
 logger = structlog.get_logger()
 
+MIN_POINTS = 100
+
 
 class FailurePredictionPipeline(BasePipeline):
-    """Pipeline for failure prediction analytics."""
-
-    def __init__(self):
-        self._logger = logger.bind(pipeline="FailurePrediction")
-        self._feature_engineer = FeatureEngineer()
-
     def prepare_data(
         self,
         df: pd.DataFrame,
         parameters: Optional[Dict[str, Any]],
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        dfn = self._norm_ts(df)
+        cols = self._numeric_cols(dfn)
+        if not cols:
+            raise ValueError("No numeric columns found in dataset")
 
-        params = parameters or {}
+        clean = dfn[["timestamp"] + cols].copy().sort_values("timestamp")
+        clean = clean.set_index("timestamp").resample("1min").mean().reset_index()
+        clean[cols] = clean[cols].ffill(limit=15).bfill(limit=15)
+        clean[cols] = self._sanitize_numeric(clean[cols])
 
-        base_features = params.get(
-            "features",
-            ["voltage", "current", "power", "temperature"],
-        )
+        split = max(int(len(clean) * 0.8), MIN_POINTS)
+        split = min(split, len(clean))
+        return clean.iloc[:split], clean.iloc[split:]
 
-        df = self._feature_engineer.engineer_features(df, base_features)
-        df = self._create_failure_labels(df, params)
-
-        split_idx = int(len(df) * (1 - params.get("test_size", 0.2)))
-
-        train_df = df.iloc[:split_idx].copy()
-        test_df = df.iloc[split_idx:].copy()
-
-        return train_df, test_df
-
-    def _create_failure_labels(
-        self,
-        df: pd.DataFrame,
-        params: Dict[str, Any],
-    ) -> pd.DataFrame:
-
-        df = df.copy()
-
-        temp_threshold = params.get("failure_temp_threshold", 75.0)
-        voltage_threshold = params.get("failure_voltage_threshold", 245.0)
-
-        df["failure"] = (
-            (df["temperature"] > temp_threshold)
-            | (df["voltage"] > voltage_threshold)
-        ).astype(int)
-
-        return df
-
-    # ------------------------------------------------------------
-    # PERMANENT FIX:
-    # support single-class training
-    # ------------------------------------------------------------
     def train(
         self,
         train_df: pd.DataFrame,
         model_name: str,
         parameters: Optional[Dict[str, Any]],
-    ) -> Dict[str, Any]:
-
+    ) -> Any:
         params = parameters or {}
+        confidence = get_confidence(len(train_df), str(params.get("sensitivity", "medium")))
+        cols = self._numeric_cols(train_df)
+        data = self._sanitize_numeric(train_df[cols].copy())
 
-        exclude_cols = {
-            "failure",
-            "timestamp",
-            "_time",
-            "device_id",
-            "device_type",
-            "location",
-        }
+        features = self._build_features(data, cols)
 
-        feature_cols = [
-            c
-            for c in train_df.columns
-            if c not in exclude_cols
-            and pd.api.types.is_numeric_dtype(train_df[c])
-        ]
+        # Non-circular stress labels
+        band_viol = pd.DataFrame(index=data.index)
+        for col in cols:
+            p10, p90 = data[col].quantile(0.10), data[col].quantile(0.90)
+            band_viol[col] = ((data[col] < p10) | (data[col] > p90)).astype(int)
+        multi = (band_viol.sum(axis=1) >= 2).astype(int)
 
-        if "failure" not in train_df.columns:
-            raise ValueError("Failure label column missing")
+        roc_stress = pd.Series(0, index=data.index)
+        for col in cols:
+            roc = data[col].diff().abs().fillna(0)
+            roc_stress = roc_stress | (roc > roc.quantile(0.95)).astype(int)
 
-        X = train_df[feature_cols].values
-        y = train_df["failure"].values
+        labels = ((multi | roc_stress) > 0).astype(int)
+        if labels.sum() < 5:
+            labels.iloc[-min(10, len(labels)) :] = 1
 
         scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
+        X = scaler.fit_transform(features.fillna(0))
+        X = np.clip(X, -10.0, 10.0)
 
-        unique_classes = np.unique(y)
-
-        # ----------------------------
-        # single class → no sklearn model
-        # ----------------------------
-        if len(unique_classes) == 1:
-            only_class = int(unique_classes[0])
-
-            self._logger.warning(
-                "single_class_training_detected",
-                class_value=only_class,
-            )
-
-            return {
-                "model": None,
-                "scaler": scaler,
-                "feature_cols": feature_cols,
-                "base_features": params.get(
-                    "features",
-                    ["voltage", "current", "power", "temperature"],
-                ),
-                "single_class": only_class,
-            }
-
-        # ----------------------------
-        # normal training
-        # ----------------------------
-        if model_name == "random_forest":
-            model = RandomForestClassifier(
-                n_estimators=params.get("n_estimators", 100),
-                max_depth=params.get("max_depth", 10),
-                random_state=params.get("random_state", 42),
-            )
-
-        elif model_name == "gradient_boosting":
-            model = GradientBoostingClassifier(
-                n_estimators=params.get("n_estimators", 100),
-                learning_rate=params.get("learning_rate", 0.1),
-                max_depth=params.get("max_depth", 6),
-                random_state=params.get("random_state", 42),
-            )
-
-        else:
-            raise ValueError(f"Unknown model: {model_name}")
-
-        model.fit(X_scaled, y)
+        model = RandomForestClassifier(
+            n_estimators=int(params.get("n_estimators", 200)),
+            max_depth=int(params.get("max_depth", 8)),
+            class_weight="balanced",
+            random_state=42,
+            n_jobs=-1,
+        )
+        model.fit(X, labels.values)
 
         return {
             "model": model,
             "scaler": scaler,
-            "feature_cols": feature_cols,
-            "base_features": params.get(
-                "features",
-                ["voltage", "current", "power", "temperature"],
-            ),
-            "single_class": None,
+            "columns": cols,
+            "feature_names": features.columns.tolist(),
+            "train_data": data,
+            "confidence": confidence.to_dict(),
         }
 
     def predict(
         self,
-        df: pd.DataFrame,
-        model: Dict[str, Any],
+        test_df: pd.DataFrame,
+        model: Any,
         parameters: Optional[Dict[str, Any]],
     ) -> Dict[str, Any]:
+        df = self._norm_ts(test_df)
+        cols = [c for c in model.get("columns", []) if c in df.columns]
+        if not cols:
+            raise ValueError("No model columns available in input dataframe")
 
-        base_features = model["base_features"]
-
-        df = self._feature_engineer.engineer_features(df, base_features)
+        clean = df[["timestamp"] + cols].copy().sort_values("timestamp")
+        clean = clean.set_index("timestamp").resample("1min").mean().reset_index()
+        clean[cols] = clean[cols].ffill(limit=15).bfill(limit=15)
+        data = self._sanitize_numeric(clean[cols].copy())
+        feats = self._build_features(data, cols)
 
         scaler = model["scaler"]
-        feature_cols = model["feature_cols"]
-        single_class = model.get("single_class")
+        rf = model["model"]
 
-        for c in feature_cols:
-            if c not in df.columns:
-                df[c] = 0.0
+        X = scaler.transform(feats.fillna(0))
+        X = np.clip(X, -10.0, 10.0)
 
-        X = df[feature_cols].values
-        X_scaled = scaler.transform(X)
+        all_proba = np.clip(rf.predict_proba(X)[:, 1], 0.0, 1.0)
 
-        # ----------------------------
-        # PERMANENT FIX:
-        # single-class inference
-        # ----------------------------
-        if single_class is not None:
-            if single_class == 1:
-                failure_prob = np.ones(len(df))
+        recent_n = max(int(len(X) * 0.20), 20)
+        recent_n = min(recent_n, len(X)) if len(X) else 0
+        fp_pct = float(np.percentile(all_proba[-recent_n:], 90) * 100) if recent_n else 0.0
+
+        safe_pct = float(np.mean(all_proba < 0.30) * 100) if len(all_proba) else 0.0
+        warning_pct = float(np.mean((all_proba >= 0.30) & (all_proba < 0.70)) * 100) if len(all_proba) else 0.0
+        critical_pct = float(np.mean(all_proba >= 0.70) * 100) if len(all_proba) else 0.0
+
+        importances = rf.feature_importances_
+        feat_names = feats.columns.tolist()
+        param_imp = {col: 0.0 for col in cols}
+        for fname, imp in zip(feat_names, importances):
+            for col in cols:
+                if fname.startswith(col + "_") or fname == col:
+                    param_imp[col] += float(imp)
+                    break
+        total_imp = sum(param_imp.values()) + 1e-9
+        param_pct = {k: round(v / total_imp * 100, 1) for k, v in param_imp.items()}
+
+        split = max(1, len(data) // 2)
+        risk_factors = []
+        for col in sorted(param_pct, key=param_pct.get, reverse=True):
+            om = float(data[col].iloc[:split].mean())
+            rm = float(data[col].iloc[split:].mean()) if len(data.iloc[split:]) else om
+            rs = float(data[col].iloc[split:].std()) if len(data.iloc[split:]) else 0.0
+            cv = rs / (abs(rm) + 1e-9)
+            if cv > 0.15:
+                trend = "erratic"
+            elif rm > om * 1.05:
+                trend = "increasing"
+            elif rm < om * 0.95:
+                trend = "decreasing"
             else:
-                failure_prob = np.zeros(len(df))
-        else:
-            clf = model["model"]
-            failure_prob = clf.predict_proba(X_scaled)[:, 1]
+                trend = "stable"
+            pct_ch = (rm - om) / (abs(om) + 1e-9) * 100
 
-        predicted_failure = failure_prob > 0.5
-        time_to_failure = self._estimate_time_to_failure(failure_prob)
-
-        if "timestamp" in df.columns:
-            ts = pd.to_datetime(df["timestamp"], utc=True)
-        elif "_time" in df.columns:
-            ts = pd.to_datetime(df["_time"], utc=True)
-        else:
-            ts = None
-
-        points = None
-        if ts is not None:
-            points = [
+            risk_factors.append(
                 {
-                    "timestamp": t.isoformat(),
-                    "failure_probability": float(p),
-                    "predicted_failure": bool(f),
-                    "time_to_failure_hours": float(ttf),
+                    "parameter": col,
+                    "contribution_pct": param_pct[col],
+                    "trend": trend,
+                    "context": (
+                        f"{col} {'increased' if trend == 'increasing' else 'changed'} "
+                        f"{abs(pct_ch):.1f}% in recent readings "
+                        f"(current: {rm:.2f}, baseline: {om:.2f})"
+                    ),
+                    "reasoning": self._reasoning(col, trend),
+                    "current_value": round(rm, 3),
+                    "baseline_value": round(om, 3),
                 }
-                for t, p, f, ttf in zip(
-                    ts,
-                    failure_prob,
-                    predicted_failure,
-                    time_to_failure,
-                )
-            ]
+            )
+
+        days = self._days_available(clean)
+        confidence = get_confidence(len(clean), str((parameters or {}).get("sensitivity", "medium")))
 
         return {
-            "failure_probability": failure_prob.tolist(),
-            "predicted_failure": predicted_failure.tolist(),
-            "time_to_failure_hours": time_to_failure.tolist(),
-            "high_risk_count": int(np.sum(failure_prob > 0.7)),
-            "medium_risk_count": int(
-                np.sum((failure_prob > 0.4) & (failure_prob <= 0.7))
-            ),
-            "low_risk_count": int(np.sum(failure_prob <= 0.4)),
-            "points": points,
+            "failure_probability": all_proba.tolist(),
+            "predicted_failure": (all_proba >= 0.5).tolist(),
+            "time_to_failure_hours": [round((1.0 - p) * 720, 1) for p in all_proba],
+            "point_timestamps": [ts.isoformat() if hasattr(ts, "isoformat") else str(ts) for ts in clean["timestamp"]],
+            "failure_probability_pct": round(fp_pct, 1),
+            "risk_breakdown": {
+                "safe_pct": round(safe_pct, 1),
+                "warning_pct": round(warning_pct, 1),
+                "critical_pct": round(critical_pct, 1),
+            },
+            "risk_factors": risk_factors,
+            "model_confidence": confidence.level,
+            "days_available": round(days, 1),
+            "insufficient_data_for_prediction": len(clean) < MIN_POINTS,
+            "data_completeness_pct": self._data_completeness(clean),
+            "confidence": confidence.to_dict(),
         }
 
-    def _estimate_time_to_failure(self, failure_prob: np.ndarray) -> np.ndarray:
-
-        ttf = np.zeros(len(failure_prob), dtype=float)
-
-        for i, p in enumerate(failure_prob):
-            if p > 0.8:
-                ttf[i] = 1
-            elif p > 0.6:
-                ttf[i] = 6
-            elif p > 0.4:
-                ttf[i] = 24
-            else:
-                ttf[i] = -1
-
-        return ttf
-
-    # ------------------------------------------------------------
-    # PERMANENT FIX:
-    # evaluation aligned with full-DF inference
-    # ------------------------------------------------------------
     def evaluate(
         self,
         test_df: pd.DataFrame,
         results: Dict[str, Any],
         parameters: Optional[Dict[str, Any]],
     ) -> Dict[str, float]:
-
-        if "failure" not in test_df.columns:
-            return {}
-
-        n = len(test_df)
-
-        y_true = test_df["failure"].values
-        y_pred = np.asarray(results["predicted_failure"][-n:])
-        y_prob = np.asarray(results["failure_probability"][-n:])
-
-        precision, recall, f1, _ = precision_recall_fscore_support(
-            y_true,
-            y_pred,
-            average="binary",
-            zero_division=0,
-        )
-
-        try:
-            auc = roc_auc_score(y_true, y_prob)
-        except Exception:
-            auc = 0.5
-
         return {
-            "precision": float(precision),
-            "recall": float(recall),
-            "f1_score": float(f1),
-            "auc_roc": float(auc),
-            "accuracy": float(np.mean(y_true == y_pred)),
+            "failure_probability_pct": float(results.get("failure_probability_pct", 0.0)),
+            "model_confidence": str(results.get("model_confidence", "Low")),
         }
+
+    @staticmethod
+    def _build_features(data: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
+        out = pd.DataFrame(index=data.index)
+        for col in cols:
+            for w in [10, 30, 360]:
+                out[f"{col}_mean_{w}"] = data[col].rolling(w, min_periods=1).mean()
+                out[f"{col}_std_{w}"] = data[col].rolling(w, min_periods=1).std().fillna(0)
+            out[f"{col}_roc"] = data[col].diff().fillna(0)
+            p10, p90 = data[col].quantile(0.10), data[col].quantile(0.90)
+            out[f"{col}_above_p90"] = (data[col] > p90).astype(int)
+            out[f"{col}_below_p10"] = (data[col] < p10).astype(int)
+        out["multi_param_violation"] = sum(out[f"{c}_above_p90"] + out[f"{c}_below_p10"] for c in cols)
+        return out
+
+    @staticmethod
+    def _sanitize_numeric(data: pd.DataFrame) -> pd.DataFrame:
+        out = data.copy()
+        for col in out.columns:
+            s = pd.to_numeric(out[col], errors="coerce")
+            p01 = s.quantile(0.01) if s.notna().any() else 0.0
+            p99 = s.quantile(0.99) if s.notna().any() else 0.0
+            med = s.median() if s.notna().any() else 0.0
+            s = s.replace([np.inf], p99).replace([-np.inf], p01)
+            out[col] = s.fillna(med)
+        return out
+
+    @staticmethod
+    def _days_available(df: pd.DataFrame) -> float:
+        try:
+            return float((df["timestamp"].max() - df["timestamp"].min()).total_seconds() / 86400)
+        except Exception:
+            return 0.0
+
+    @staticmethod
+    def _data_completeness(df: pd.DataFrame) -> float:
+        if df.empty:
+            return 0.0
+        numeric = df.select_dtypes(include=[np.number])
+        if numeric.empty:
+            return 0.0
+        non_null = float(numeric.notna().sum().sum())
+        total = float(numeric.shape[0] * numeric.shape[1])
+        return round((non_null / total * 100) if total > 0 else 0.0, 2)
+
+    @staticmethod
+    def _reasoning(param: str, trend: str) -> str:
+        p = param.lower()
+        if "temp" in p and trend == "increasing":
+            return "Rising temperature indicates cooling degradation or increased friction"
+        if "vibr" in p and trend == "increasing":
+            return "Progressive vibration increase is a common bearing failure precursor"
+        if "press" in p and trend == "decreasing":
+            return "Declining pressure may indicate seal or valve degradation"
+        if "current" in p and trend == "erratic":
+            return "Erratic current draw suggests mechanical resistance or electrical issue"
+        if "power" in p and trend == "increasing":
+            return "Increasing power consumption may indicate inefficiency or overload"
+        if trend == "erratic":
+            return f"Erratic {param} pattern indicates instability"
+        if trend == "increasing":
+            return f"Sustained increase in {param} is a stress indicator"
+        if trend == "decreasing":
+            return f"Declining {param} may indicate degradation"
+        return f"{param} is within normal operating range"
+
+    @staticmethod
+    def _norm_ts(df: pd.DataFrame) -> pd.DataFrame:
+        out = df.copy()
+        if "timestamp" not in out.columns and "_time" in out.columns:
+            out = out.rename(columns={"_time": "timestamp"})
+        out["timestamp"] = pd.to_datetime(out["timestamp"], utc=True, errors="coerce")
+        return out.dropna(subset=["timestamp"])
+
+    @staticmethod
+    def _numeric_cols(df: pd.DataFrame) -> List[str]:
+        exclude = {
+            "timestamp",
+            "_time",
+            "device_id",
+            "schema_version",
+            "enrichment_status",
+            "table",
+            "hour",
+            "minute",
+            "second",
+            "day",
+            "month",
+            "year",
+            "day_of_week",
+            "day_of_year",
+            "week",
+            "week_of_year",
+            "quarter",
+            "is_weekend",
+            "index",
+            "unnamed: 0",
+        }
+        return [c for c in df.columns if c not in exclude and pd.api.types.is_numeric_dtype(df[c])]

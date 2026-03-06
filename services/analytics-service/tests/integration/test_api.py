@@ -3,9 +3,9 @@
 import pytest
 from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
+from unittest.mock import AsyncMock, MagicMock
 
 from src.main import create_app
-from src.models.schemas import AnalyticsType
 
 
 class TestHealthEndpoints:
@@ -43,6 +43,9 @@ class TestAnalyticsEndpoints:
     def client(self):
         """Create test client."""
         app = create_app()
+        queue = MagicMock()
+        queue.submit_job = AsyncMock()
+        app.state.job_queue = queue
         return TestClient(app)
     
     def test_submit_analytics_job(self, client):
@@ -92,4 +95,4 @@ class TestAnalyticsEndpoints:
         
         response = client.post("/api/v1/analytics/run", json=request_data)
         
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 202

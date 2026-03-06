@@ -32,6 +32,21 @@ async def lifespan(app: FastAPI):
     worker_task = asyncio.create_task(job_worker.start())
     app.state.job_queue = job_queue
     app.state.job_worker = job_worker
+    app.state.fleet_tasks = set()
+
+    _retrainer = None
+    _retrainer_task = None
+    if settings.ml_weekly_retrainer_enabled:
+        from src.infrastructure.s3_client import S3Client
+        from src.services.analytics.retrainer import WeeklyRetrainer
+        from src.services.dataset_service import DatasetService
+
+        _retrainer = WeeklyRetrainer(
+            job_queue=job_queue,
+            dataset_service=DatasetService(S3Client()),
+        )
+        _retrainer_task = asyncio.create_task(_retrainer.start(device_ids=[]))
+        app.state.retrainer = _retrainer
     
     logger.info("analytics_service_ready")
     
@@ -39,11 +54,24 @@ async def lifespan(app: FastAPI):
     
     logger.info("analytics_service_shutting_down")
     await job_worker.stop()
+    for task in list(app.state.fleet_tasks):
+        task.cancel()
+    if app.state.fleet_tasks:
+        await asyncio.gather(*app.state.fleet_tasks, return_exceptions=True)
     worker_task.cancel()
     try:
         await worker_task
     except asyncio.CancelledError:
         pass
+
+    if settings.ml_weekly_retrainer_enabled and hasattr(app.state, "retrainer") and _retrainer:
+        await _retrainer.stop()
+        if _retrainer_task:
+            _retrainer_task.cancel()
+            try:
+                await _retrainer_task
+            except asyncio.CancelledError:
+                pass
     logger.info("analytics_service_stopped")
 
 

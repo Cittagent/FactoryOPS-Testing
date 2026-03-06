@@ -1,6 +1,7 @@
 """Dataset access service - reads from S3 only."""
 
 import io
+import re
 from datetime import datetime
 from typing import Optional
 
@@ -34,10 +35,9 @@ class DatasetService:
         Otherwise, the key is constructed from device_id and time range.
         """
 
-        # ---------------------------------------------------------
-        # Permanent fix:
         # s3_key takes priority and does NOT require start/end time
-        # ---------------------------------------------------------
+        requested_range = start_time is not None and end_time is not None
+        generated_key = False
         if s3_key is None:
             if start_time is None or end_time is None:
                 raise DatasetReadError(
@@ -49,6 +49,7 @@ class DatasetService:
                 start_time,
                 end_time,
             )
+            generated_key = True
 
             self._logger.info(
                 "loading_dataset",
@@ -87,7 +88,32 @@ class DatasetService:
                 error=str(e),
             )
 
-            if "Not Found" in str(e) or "NoSuchKey" in str(e):
+            not_found = "Not Found" in str(e) or "NoSuchKey" in str(e)
+            if not_found and generated_key and requested_range and start_time and end_time:
+                fallback_key = await self._find_best_available_key(
+                    device_id=device_id,
+                    start_time=start_time,
+                    end_time=end_time,
+                )
+                if fallback_key:
+                    self._logger.warning(
+                        "dataset_range_missing_fallback_to_available",
+                        device_id=device_id,
+                        requested_key=s3_key,
+                        fallback_key=fallback_key,
+                    )
+                    data = await self._s3.download_file(fallback_key)
+                    df = pd.read_parquet(io.BytesIO(data))
+                    self._logger.info(
+                        "dataset_loaded",
+                        device_id=device_id,
+                        rows=len(df),
+                        columns=list(df.columns),
+                        fallback_key=fallback_key,
+                    )
+                    return df
+
+            if not_found:
                 raise DatasetNotFoundError(f"Dataset not found: {s3_key}")
 
             raise DatasetReadError(f"Failed to read dataset: {e}") from e
@@ -104,6 +130,15 @@ class DatasetService:
             f"{start_time.strftime('%Y%m%d')}_{end_time.strftime('%Y%m%d')}.parquet"
         )
 
+    def construct_expected_s3_key(
+        self,
+        device_id: str,
+        start_time: datetime,
+        end_time: datetime,
+    ) -> str:
+        """Public helper for other services/routes needing the canonical key."""
+        return self._construct_s3_key(device_id, start_time, end_time)
+
     async def list_available_datasets(
         self,
         device_id: str,
@@ -114,3 +149,68 @@ class DatasetService:
             prefix = f"datasets/{device_id}/"
 
         return await self._s3.list_objects(prefix)
+
+    async def get_best_available_dataset_key(
+        self,
+        device_id: str,
+        start_time: datetime,
+        end_time: datetime,
+    ) -> Optional[str]:
+        """Return the best available dataset key for a range when exact key is missing."""
+        return await self._find_best_available_key(
+            device_id=device_id,
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+    async def _find_best_available_key(
+        self,
+        device_id: str,
+        start_time: datetime,
+        end_time: datetime,
+    ) -> Optional[str]:
+        """Pick best available dataset key when exact range key is missing."""
+        candidates = await self.list_available_datasets(device_id=device_id)
+        if not candidates:
+            return None
+
+        def score(item: dict) -> tuple:
+            # lower score is better:
+            # 1) covering requested range (0 preferred)
+            # 2) absolute gap to requested end date (smaller preferred)
+            # 3) newer file (later preferred)
+            key = item.get("key", "")
+            parsed = self._parse_date_window_from_key(key)
+            if parsed is None:
+                cover_penalty = 1
+                gap_days = 10**9
+            else:
+                key_start, key_end = parsed
+                covers = key_start <= start_time.date() and key_end >= end_time.date()
+                cover_penalty = 0 if covers else 1
+                gap_days = abs((key_end - end_time.date()).days)
+
+            last_modified = item.get("last_modified", "")
+            return (cover_penalty, gap_days, -self._safe_ts(last_modified))
+
+        best = min(candidates, key=score)
+        return best.get("key")
+
+    @staticmethod
+    def _parse_date_window_from_key(key: str):
+        m = re.search(r"(\d{8})_(\d{8})\.parquet$", key)
+        if not m:
+            return None
+        try:
+            start = datetime.strptime(m.group(1), "%Y%m%d").date()
+            end = datetime.strptime(m.group(2), "%Y%m%d").date()
+            return start, end
+        except Exception:
+            return None
+
+    @staticmethod
+    def _safe_ts(value: str) -> float:
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+        except Exception:
+            return 0.0

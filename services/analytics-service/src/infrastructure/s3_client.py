@@ -61,6 +61,20 @@ class S3Client:
 
             return data
 
+    async def object_exists(self, key: str) -> bool:
+        async with self._session.client("s3", **self._client_kwargs()) as client:
+            try:
+                await client.head_object(
+                    Bucket=self._bucket,
+                    Key=key,
+                )
+                return True
+            except ClientError as exc:
+                code = exc.response.get("Error", {}).get("Code", "")
+                if code in {"NoSuchKey", "404", "NotFound"}:
+                    return False
+                raise
+
     async def list_objects(
         self,
         prefix: str = "",

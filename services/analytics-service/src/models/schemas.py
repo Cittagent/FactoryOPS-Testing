@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -68,6 +68,23 @@ class AnalyticsJobResponse(BaseModel):
     job_id: str
     status: JobStatus
     message: str
+
+
+class FleetAnalyticsRequest(BaseModel):
+    """Fleet analytics request for strict all-device orchestration."""
+
+    device_ids: List[str] = Field(default_factory=list)
+    start_time: datetime
+    end_time: datetime
+    analysis_type: Literal["anomaly", "prediction"]
+    model_name: Optional[str] = None
+    parameters: Optional[Dict[str, Any]] = None
+
+    @model_validator(mode="after")
+    def validate_timerange(self):
+        if self.end_time <= self.start_time:
+            raise ValueError("end_time must be after start_time")
+        return self
 
 
 class JobStatusResponse(BaseModel):

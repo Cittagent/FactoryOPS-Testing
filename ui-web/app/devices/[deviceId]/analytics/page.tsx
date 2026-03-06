@@ -1,25 +1,18 @@
 "use client";
-
 import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 
-export default function AnalyticsRedirectPage() {
-  const params = useParams();
+export default function DeviceAnalyticsPage() {
+  const { deviceId } = useParams<{ deviceId: string }>();
   const router = useRouter();
-  const deviceId = (params.deviceId as string) || "";
 
   useEffect(() => {
-    if (deviceId) {
-      router.replace(`/analytics`);
-    }
+    if (deviceId) router.replace(`/analytics?device=${deviceId}`);
   }, [deviceId, router]);
 
   return (
-    <div className="flex items-center justify-center h-64">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-slate-600">Redirecting...</p>
-      </div>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 64 }}>
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 mx-auto" />
     </div>
   );
 }

@@ -53,6 +53,16 @@ class Settings(BaseSettings):
     max_concurrent_jobs: int = Field(default=3)
     job_timeout_seconds: int = Field(default=3600)
 
+    ml_analytics_v2_enabled: bool = Field(default=False)
+    ml_formatted_results_enabled: bool = Field(default=True)
+    ml_weekly_retrainer_enabled: bool = Field(default=True)
+    ml_fleet_strict_enabled: bool = Field(default=True)
+    ml_data_readiness_gate_enabled: bool = Field(default=True)
+
+    data_export_service_url: str = Field(default="http://data-export-service:8080")
+    data_readiness_poll_attempts: int = Field(default=3)
+    data_readiness_initial_delay_seconds: int = Field(default=5)
+
     @property
     def mysql_dsn(self) -> str:
         return (

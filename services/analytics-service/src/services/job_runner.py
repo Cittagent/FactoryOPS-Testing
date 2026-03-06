@@ -264,11 +264,13 @@ from typing import Any, Dict
 import pandas as pd
 import structlog
 
+from src.config.settings import get_settings
 from src.models.schemas import AnalyticsRequest, AnalyticsType, JobStatus
 from src.services.analytics.anomaly_detection import AnomalyDetectionPipeline
 from src.services.analytics.failure_prediction import FailurePredictionPipeline
 from src.services.analytics.forecasting import ForecastingPipeline
 from src.services.dataset_service import DatasetService
+from src.services.result_formatter import ResultFormatter
 from src.services.result_repository import ResultRepository
 from src.utils.exceptions import AnalyticsError
 
@@ -313,6 +315,8 @@ class JobRunner:
 
     async def run_job(self, job_id: str, request: AnalyticsRequest) -> None:
         start_clock = time.time()
+        params = request.parameters or {}
+        settings = get_settings()
 
         self._logger.info(
             "job_started",
@@ -353,7 +357,7 @@ class JobRunner:
             )
 
             train_df, test_df = pipeline.prepare_data(
-                df, request.parameters
+                df, params
             )
 
             await self._result_repo.update_job_progress(
@@ -361,7 +365,7 @@ class JobRunner:
             )
 
             model = pipeline.train(
-                train_df, request.model_name, request.parameters
+                train_df, request.model_name, params
             )
 
             await self._result_repo.update_job_progress(
@@ -372,7 +376,7 @@ class JobRunner:
             # Inference always runs on FULL dataframe
             # -------------------------------------------------------
             results = pipeline.predict(
-                df, model, request.parameters
+                df, model, params
             )
 
             await self._result_repo.update_job_progress(
@@ -380,7 +384,7 @@ class JobRunner:
             )
 
             metrics = pipeline.evaluate(
-                test_df, results, request.parameters
+                test_df, results, params
             )
 
             # ---------------------------------------------------------
@@ -391,6 +395,41 @@ class JobRunner:
 
             if request.analysis_type == AnalyticsType.PREDICTION:
                 self._attach_failure_points(results, df)
+
+            if settings.ml_formatted_results_enabled:
+                formatter = ResultFormatter()
+                if request.analysis_type == AnalyticsType.ANOMALY:
+                    results["formatted"] = formatter.format_anomaly_results(
+                        device_id=request.device_id,
+                        job_id=job_id,
+                        anomaly_details=results.get("anomaly_details", []),
+                        total_points=len(results.get("is_anomaly", [])),
+                        sensitivity=params.get("sensitivity", "medium"),
+                        lookback_days=int(params.get("lookback_days", 7)),
+                        metadata={
+                            "data_completeness_pct": results.get("data_completeness_pct", 100.0),
+                            "fallback_mode": results.get("fallback_mode", False),
+                            "days_available": results.get("days_available", params.get("lookback_days", 7)),
+                            "data_points_analyzed": len(results.get("is_anomaly", [])),
+                        },
+                    )
+                elif request.analysis_type == AnalyticsType.PREDICTION:
+                    results["formatted"] = formatter.format_failure_prediction_results(
+                        device_id=request.device_id,
+                        job_id=job_id,
+                        failure_probability_pct=results.get("failure_probability_pct", 0.0),
+                        risk_breakdown=results.get("risk_breakdown", {}),
+                        risk_factors=results.get("risk_factors", []),
+                        model_confidence=results.get("model_confidence", "Low"),
+                        days_available=results.get("days_available", 0.0),
+                        anomaly_score=float(metrics.get("anomaly_rate_pct", 0.0)) if isinstance(metrics, dict) else 0.0,
+                        metadata={
+                            "data_completeness_pct": results.get("data_completeness_pct", 100.0),
+                            "fallback_mode": results.get("fallback_mode", False),
+                            "data_points_analyzed": len(results.get("failure_probability", [])),
+                            "sensitivity": params.get("sensitivity", "medium"),
+                        },
+                    )
 
             # ---------------------------------------------------------
             # Permanent JSON safety boundary (NO NaN / NO inf)
@@ -472,16 +511,25 @@ class JobRunner:
                 "Anomaly results missing 'anomaly_score' or 'is_anomaly'"
             )
 
-        if len(df) != len(anomaly_scores):
-            raise AnalyticsError(
-                "Mismatch between dataframe length and anomaly result length"
+        point_ts = results.get("point_timestamps")
+        if isinstance(point_ts, list) and len(point_ts) == len(anomaly_scores):
+            timestamps = pd.to_datetime(
+                point_ts,
+                utc=True,
+                errors="coerce",
             )
-
-        timestamps = pd.to_datetime(
-            df[ts_col],
-            utc=True,
-            errors="coerce",
-        )
+        else:
+            # Fallback: align on min length instead of failing whole job
+            n = min(len(df), len(anomaly_scores), len(is_anomaly))
+            if n <= 0:
+                raise AnalyticsError("No data points available for anomaly point attachment")
+            anomaly_scores = anomaly_scores[:n]
+            is_anomaly = is_anomaly[:n]
+            timestamps = pd.to_datetime(
+                df[ts_col].iloc[:n],
+                utc=True,
+                errors="coerce",
+            )
 
         if timestamps.isna().any():
             raise AnalyticsError(
@@ -533,20 +581,26 @@ class JobRunner:
                 "Failure prediction results missing required fields"
             )
 
-        if not (
-            len(df) == len(failure_prob)
-            and len(failure_prob) == len(predicted)
-            and len(predicted) == len(ttf)
-        ):
-            raise AnalyticsError(
-                "Mismatch between dataframe length and failure prediction result length"
+        point_ts = results.get("point_timestamps")
+        if isinstance(point_ts, list) and len(point_ts) == len(failure_prob):
+            timestamps = pd.to_datetime(
+                point_ts,
+                utc=True,
+                errors="coerce",
             )
-
-        timestamps = pd.to_datetime(
-            df[ts_col],
-            utc=True,
-            errors="coerce",
-        )
+        else:
+            # Fallback: align on min length instead of failing whole job
+            n = min(len(df), len(failure_prob), len(predicted), len(ttf))
+            if n <= 0:
+                raise AnalyticsError("No data points available for failure point attachment")
+            failure_prob = failure_prob[:n]
+            predicted = predicted[:n]
+            ttf = ttf[:n]
+            timestamps = pd.to_datetime(
+                df[ts_col].iloc[:n],
+                utc=True,
+                errors="coerce",
+            )
 
         if timestamps.isna().any():
             raise AnalyticsError(

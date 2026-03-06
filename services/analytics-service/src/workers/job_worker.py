@@ -11,7 +11,7 @@ from src.infrastructure.mysql_repository import MySQLResultRepository
 from src.infrastructure.s3_client import S3Client
 from src.services.dataset_service import DatasetService
 from src.services.job_runner import JobRunner
-from src.utils.exceptions import AnalyticsError, DatasetNotFoundError
+from src.utils.exceptions import AnalyticsError, DatasetNotFoundError, JobNotFoundError
 from src.workers.job_queue import JobQueue
 
 logger = structlog.get_logger()
@@ -114,15 +114,18 @@ class JobWorker:
                     date_range_start = request.start_time
                     date_range_end = request.end_time
 
-                await result_repo.create_job(
-                    job_id=job_id,
-                    device_id=request.device_id,
-                    analysis_type=request.analysis_type.value,
-                    model_name=request.model_name,
-                    date_range_start=date_range_start,
-                    date_range_end=date_range_end,
-                    parameters=request.parameters,
-                )
+                try:
+                    await result_repo.get_job(job_id)
+                except JobNotFoundError:
+                    await result_repo.create_job(
+                        job_id=job_id,
+                        device_id=request.device_id,
+                        analysis_type=request.analysis_type.value,
+                        model_name=request.model_name,
+                        date_range_start=date_range_start,
+                        date_range_end=date_range_end,
+                        parameters=request.parameters,
+                    )
 
                 s3_client = S3Client()
                 dataset_service = DatasetService(s3_client)
@@ -166,10 +169,21 @@ class JobWorker:
                 result_repo = MySQLResultRepository(session)
                 from src.models.schemas import JobStatus
 
+                msg = "Job failed"
+                lower = (error_message or "").lower()
+                if "dataset not found" in lower or "no such key" in lower:
+                    msg = (
+                        "No dataset found for selected date range. "
+                        "Please start the device and ensure telemetry is flowing, then retry analysis."
+                    )
+                elif "no numeric columns" in lower or "insufficient" in lower:
+                    msg = "Insufficient signal/data for reliable analytics. Please collect more telemetry."
+
                 await result_repo.update_job_status(
                     job_id=job_id,
                     status=JobStatus.FAILED,
                     completed_at=datetime.utcnow(),
+                    message=msg,
                     error_message=error_message,
                 )
         except Exception as e:
