@@ -27,6 +27,10 @@ const nextConfig: NextConfig = {
         source: "/backend/data-export/:path*",
         destination: "http://data-export-service:8080/:path*",
       },
+      {
+        source: "/backend/reporting/:path*",
+        destination: "http://reporting-service:8085/:path*",
+      },
 
       // reporting-service
       {

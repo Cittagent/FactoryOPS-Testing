@@ -41,10 +41,10 @@ class Settings(BaseSettings):
     EMAIL_SMTP_USERNAME: str = ""
     EMAIL_SMTP_PASSWORD: str = ""
     EMAIL_FROM_ADDRESS: str = "alerts@energy-platform.com"
-    EMAIL_TO_ADDRESS: str = ""
     
     WHATSAPP_ENABLED: bool = False
     TELEGRAM_ENABLED: bool = False
+    REPORTING_SERVICE_URL: str = "http://reporting-service:8085"
     
     # Multi-tenancy (Phase-2 ready)
     TENANT_ID_HEADER: str = "X-Tenant-ID"

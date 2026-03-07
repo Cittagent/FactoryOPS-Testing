@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from src.config import settings
 from src.database import engine
-from src.handlers import energy_router, comparison_router, tariffs_router, common_router
+from src.handlers import energy_router, comparison_router, tariffs_router, common_router, settings_router
 from src.services.influx_reader import influx_reader
 from src.tasks.scheduler import start_scheduler, stop_scheduler
 from src.storage.minio_client import minio_client
@@ -169,3 +169,4 @@ app.include_router(energy_router, prefix="/api/reports/energy", tags=["Energy Re
 app.include_router(comparison_router, prefix="/api/reports/energy/comparison", tags=["Comparison Reports"])
 app.include_router(tariffs_router, prefix="/api/reports/tariffs", tags=["Tariffs"])
 app.include_router(common_router, prefix="/api/reports", tags=["Reports"])
+app.include_router(settings_router, prefix="/api/v1/settings", tags=["Settings"])

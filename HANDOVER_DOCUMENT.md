@@ -81,7 +81,7 @@ Use `API.md` (repository root) as the current API source of truth for:
 
 ### D. Alert Notification (Email) Configuration
 
-Rule email notifications are configuration-driven via environment variables and do **not** require code-level hardcoding per rule.
+Rule email notifications are configuration-driven and do **not** require code-level hardcoding per rule.
 
 Supported env mapping in `rule-engine-service`:
 - `EMAIL_ENABLED`
@@ -90,7 +90,7 @@ Supported env mapping in `rule-engine-service`:
 - `EMAIL_SMTP_USERNAME` (or fallback `EMAIL_SENDER`)
 - `EMAIL_SMTP_PASSWORD` (or fallback `EMAIL_PASSWORD`)
 - `EMAIL_FROM_ADDRESS` (or fallback `EMAIL_SENDER`)
-- `EMAIL_TO_ADDRESS` (or fallback `EMAIL_RECIPIENTS`)
+- Recipient targets are resolved dynamically from Settings API (`/api/v1/settings/notifications`) active email list.
 
 Operational note:
 - SMTP credentials should be set in `.env` and managed per environment.

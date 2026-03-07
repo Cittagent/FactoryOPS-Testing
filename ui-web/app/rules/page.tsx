@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select, Checkbox } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/badge";
+import { formatIST } from "@/lib/utils";
 
 const CONDITION_OPTIONS = [
   { value: ">", label: "Greater than (> )" },
@@ -577,7 +578,7 @@ export default function RulesPage() {
                 <TableBody>
                   {filteredEvents.map((event) => (
                     <TableRow key={event.eventId}>
-                      <TableCell>{new Date(event.createdAt).toLocaleString()}</TableCell>
+                      <TableCell>{formatIST(event.createdAt, "N/A")}</TableCell>
                       <TableCell className="font-mono text-xs">{event.deviceId || "GLOBAL"}</TableCell>
                       <TableCell className="capitalize">{event.eventType.replace(/_/g, " ")}</TableCell>
                       <TableCell>{event.title}</TableCell>

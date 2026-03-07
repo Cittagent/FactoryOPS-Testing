@@ -12,6 +12,7 @@ from email.mime.multipart import MIMEMultipart
 from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod
 from datetime import datetime
+import httpx
 
 from app.models.rule import Rule
 from app.config import settings
@@ -88,7 +89,33 @@ class EmailAdapter(NotificationChannel):
         self._smtp_username = settings.EMAIL_SMTP_USERNAME
         self._smtp_password = settings.EMAIL_SMTP_PASSWORD
         self._from_address = settings.EMAIL_FROM_ADDRESS
-        self._to_address = settings.EMAIL_TO_ADDRESS
+        self._settings_base = settings.REPORTING_SERVICE_URL.rstrip("/")
+
+    async def _fetch_recipients(self) -> list[str]:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{self._settings_base}/api/v1/settings/notifications")
+                if response.status_code != 200:
+                    logger.warning(
+                        "Failed to fetch notification recipients",
+                        extra={"channel": "email", "status_code": response.status_code},
+                    )
+                    return []
+                payload = response.json()
+                emails = payload.get("email", []) if isinstance(payload, dict) else []
+                recipients = []
+                for row in emails:
+                    value = (row or {}).get("value")
+                    is_active = bool((row or {}).get("is_active", True))
+                    if value and is_active:
+                        recipients.append(str(value).strip())
+                return sorted(set(recipients))
+        except Exception as e:
+            logger.warning(
+                "Recipient fetch failed",
+                extra={"channel": "email", "error": str(e)},
+            )
+            return []
     
     async def send(
         self,
@@ -133,13 +160,13 @@ class EmailAdapter(NotificationChannel):
             )
             return False
         
-        recipients = [r.strip() for r in self._to_address.split(",") if r.strip()]
+        recipients = await self._fetch_recipients()
         if not recipients:
             logger.warning(
-                "Email not configured - no recipients",
+                "Email recipients not configured in settings",
                 extra={"channel": "email"}
             )
-            return False
+            return True
         
         try:
             msg = MIMEMultipart("alternative")
@@ -453,5 +480,4 @@ class NotificationAdapter:
 
 
 notification_adapter = NotificationAdapter()
-
 

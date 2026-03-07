@@ -118,11 +118,7 @@ function sortTelemetryDesc(items: TelemetryPoint[]): TelemetryPoint[] {
 }
 
 function formatTimestamp(ts: string): string {
-  try {
-    const date = new Date(ts);
-    if (isNaN(date.getTime())) return ts;
-    return date.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-  } catch { return ts; }
+  return formatIST(ts, ts);
 }
 
 function formatEventType(eventType: string): string {

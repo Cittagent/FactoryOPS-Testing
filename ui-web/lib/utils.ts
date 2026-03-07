@@ -5,27 +5,32 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatIST(utcTimestamp: string | null): string {
-  if (!utcTimestamp) return 'No data received';
-  
+function parseUtcTimestamp(value: string): Date {
+  const ts = value.trim();
+  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(ts);
+  return new Date(hasTimezone ? ts : `${ts}Z`);
+}
+
+export function formatIST(
+  utcTimestamp: string | null,
+  emptyText = 'No data received'
+): string {
+  if (!utcTimestamp) return emptyText;
   try {
-    const date = new Date(utcTimestamp);
+    const date = parseUtcTimestamp(utcTimestamp);
     if (isNaN(date.getTime())) return 'Invalid date';
-    
-    // Convert UTC to IST (UTC + 5:30)
-    const istOffset = 5.5 * 60 * 60 * 1000; // 5 hours 30 minutes in ms
-    const istDate = new Date(date.getTime() + istOffset);
-    
-    return istDate.toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-      timeZone: 'Asia/Kolkata'
-    }) + ' IST';
+    return (
+      date.toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata',
+      }) + ' IST'
+    );
   } catch {
     return 'Invalid date';
   }

@@ -159,7 +159,6 @@ services:
       - EMAIL_SMTP_USERNAME=${EMAIL_SMTP_USERNAME:-${EMAIL_SENDER:-}}
       - EMAIL_SMTP_PASSWORD=${EMAIL_SMTP_PASSWORD:-${EMAIL_PASSWORD:-}}
       - EMAIL_FROM_ADDRESS=${EMAIL_FROM_ADDRESS:-${EMAIL_SENDER:-alerts@energy-platform.com}}
-      - EMAIL_TO_ADDRESS=${EMAIL_TO_ADDRESS:-${EMAIL_RECIPIENTS:-}}
     ports:
       - "8002:8002"
     depends_on:
