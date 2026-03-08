@@ -127,6 +127,16 @@ function formatTimestamp(ts: string): string {
   return formatIST(ts, ts);
 }
 
+function formatMinutes(totalMinutes: number | null | undefined): string {
+  if (typeof totalMinutes !== "number" || Number.isNaN(totalMinutes) || totalMinutes < 0) {
+    return "—";
+  }
+  const rounded = Math.round(totalMinutes);
+  const hrs = Math.floor(rounded / 60);
+  const mins = rounded % 60;
+  return `${hrs}h ${mins}m`;
+}
+
 function formatEventType(eventType: string): string {
   return eventType
     .split("_")
@@ -156,8 +166,16 @@ function UptimeCircle({ uptime, onClick }: { uptime: UptimeData | null; onClick:
         {uptime ? (
           <>
             <p className="text-xs text-slate-600">Active Shifts: <span className="font-medium">{uptime.shifts_configured}</span></p>
-            <p className="text-xs text-slate-600">Planned: <span className="font-medium">{Math.floor(uptime.total_planned_minutes / 60)}h {uptime.total_planned_minutes % 60}m</span></p>
-            <p className="text-xs text-slate-600">Effective: <span className="font-medium">{Math.floor(uptime.total_effective_minutes / 60)}h {uptime.total_effective_minutes % 60}m</span></p>
+            {uptime.uptime_percentage === null ? (
+              <p className="text-xs text-amber-700 mt-2">{uptime.message || "No active shift window right now."}</p>
+            ) : (
+              <>
+                <p className="text-xs text-slate-600">Planned: <span className="font-medium">{formatMinutes(uptime.total_planned_minutes)}</span></p>
+                <p className="text-xs text-slate-600">Effective: <span className="font-medium">{formatMinutes(uptime.total_effective_minutes)}</span></p>
+                <p className="text-xs text-slate-600">Running: <span className="font-medium">{formatMinutes(uptime.actual_running_minutes)}</span></p>
+                <p className="text-xs text-slate-500 mt-2">Uptime = running minutes / effective shift minutes.</p>
+              </>
+            )}
           </>
         ) : (
           <p className="text-xs text-slate-500">No shifts configured</p>
@@ -920,15 +938,31 @@ export default function MachineDashboardPage() {
               <div className="relative group rounded-xl border border-slate-200 bg-white p-4 cursor-help">
                 <p className="text-xs uppercase tracking-[0.14em] text-slate-500 font-semibold">Uptime</p>
                 <p className="text-3xl font-bold text-slate-900 mt-2">{uptimePercent !== null ? `${uptimePercent.toFixed(1)}%` : "—"}</p>
-                <p className="text-[11px] text-slate-500 mt-1">Hover for calc details</p>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  {uptimePercent !== null ? "Hover for calc details" : (uptime?.message || "No active shift window")}
+                </p>
                 <div className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-72 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                   <p className="text-xs font-semibold text-slate-700 mb-2">Uptime Calculation</p>
                   {uptime ? (
                     <>
                       <p className="text-xs text-slate-600">Active shifts: <span className="font-medium">{uptime.shifts_configured}</span></p>
-                      <p className="text-xs text-slate-600">Planned duration: <span className="font-medium">{Math.floor(uptime.total_planned_minutes / 60)}h {uptime.total_planned_minutes % 60}m</span></p>
-                      <p className="text-xs text-slate-600">Effective duration: <span className="font-medium">{Math.floor(uptime.total_effective_minutes / 60)}h {uptime.total_effective_minutes % 60}m</span></p>
-                      <p className="text-xs text-slate-500 mt-2">Formula now: effective/planned from shift configuration.</p>
+                      {uptime.uptime_percentage === null ? (
+                        <p className="text-xs text-amber-700 mt-1">{uptime.message || "No active shift window right now."}</p>
+                      ) : (
+                        <>
+                          <p className="text-xs text-slate-600">Planned duration: <span className="font-medium">{formatMinutes(uptime.total_planned_minutes)}</span></p>
+                          <p className="text-xs text-slate-600">Effective duration: <span className="font-medium">{formatMinutes(uptime.total_effective_minutes)}</span></p>
+                          <p className="text-xs text-slate-600">Actual running: <span className="font-medium">{formatMinutes(uptime.actual_running_minutes)}</span></p>
+                          <p className="text-xs text-slate-600">Data coverage: <span className="font-medium">{typeof uptime.data_coverage_pct === "number" ? `${uptime.data_coverage_pct.toFixed(1)}%` : "—"}</span></p>
+                          <p className="text-xs text-slate-600">Data quality: <span className="font-medium capitalize">{uptime.data_quality || "—"}</span></p>
+                          {uptime.window_start && uptime.window_end && (
+                            <p className="text-xs text-slate-600">
+                              Shift window: <span className="font-medium">{formatIST(uptime.window_start, "—")} → {formatIST(uptime.window_end, "—")}</span>
+                            </p>
+                          )}
+                          <p className="text-xs text-slate-500 mt-2">Formula: uptime = running minutes / effective shift minutes.</p>
+                        </>
+                      )}
                     </>
                   ) : (
                     <p className="text-xs text-slate-500">No shift configuration found.</p>
@@ -949,6 +983,7 @@ export default function MachineDashboardPage() {
                       <p className="text-xs text-slate-600">Machine state: <span className="font-medium">{healthScore.machine_state}</span></p>
                       <p className="text-xs text-slate-600">Parameters used: <span className="font-medium">{healthScore.parameters_included}</span>, skipped: <span className="font-medium">{healthScore.parameters_skipped}</span></p>
                       <p className="text-xs text-slate-600">Configured weight total: <span className="font-medium">{healthScore.total_weight_configured}%</span></p>
+                      <p className="text-xs text-slate-500 mt-2">Health = weighted average of configured parameter scores (0-100).</p>
                       <div className="mt-2 border-t border-slate-100 pt-2 space-y-1">
                         {healthScore.parameter_scores.slice(0, 4).map((p) => (
                           <p key={p.parameter_name} className="text-xs text-slate-600">

@@ -219,7 +219,14 @@ export interface UptimeData {
   uptime_percentage: number | null;
   total_planned_minutes: number;
   total_effective_minutes: number;
+  actual_running_minutes?: number;
   shifts_configured: number;
+  window_start?: string | null;
+  window_end?: string | null;
+  window_timezone?: string;
+  data_coverage_pct?: number;
+  data_quality?: "high" | "medium" | "low" | string;
+  calculation_mode?: string;
   message: string;
 }
 

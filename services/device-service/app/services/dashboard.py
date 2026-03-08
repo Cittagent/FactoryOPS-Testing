@@ -6,12 +6,13 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 import httpx
-from sqlalchemy import Float, and_, case, cast, func, literal, select
+from sqlalchemy import and_, func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.device import Device, DevicePerformanceTrend, DeviceShift, RuntimeStatus
 from app.services.health_config import HealthConfigService
+from app.services.shift import ShiftService
 
 
 class DashboardService:
@@ -95,28 +96,6 @@ class DashboardService:
             .subquery()
         )
 
-        start_sec = func.time_to_sec(DeviceShift.shift_start)
-        end_sec = func.time_to_sec(DeviceShift.shift_end)
-        planned_minutes_expr = (
-            case(
-                (end_sec <= start_sec, (end_sec + literal(86400)) - start_sec),
-                else_=end_sec - start_sec,
-            )
-            / literal(60.0)
-        )
-        effective_minutes_expr = planned_minutes_expr - cast(DeviceShift.maintenance_break_minutes, Float)
-
-        shift_agg_subq = (
-            select(
-                DeviceShift.device_id.label("device_id"),
-                func.sum(planned_minutes_expr).label("planned_minutes"),
-                func.sum(effective_minutes_expr).label("effective_minutes"),
-            )
-            .where(DeviceShift.is_active.is_(True))
-            .group_by(DeviceShift.device_id)
-            .subquery()
-        )
-
         health_config_subq = (
             select(
                 DeviceShift.device_id.label("device_id"),
@@ -143,13 +122,11 @@ class DashboardService:
                 Device.device_type,
                 Device.location,
                 Device.last_seen_timestamp,
+                Device.tenant_id,
                 latest_trend_subq.c.health_score,
-                shift_agg_subq.c.planned_minutes,
-                shift_agg_subq.c.effective_minutes,
                 health_config_subq.c.active_health_config_count,
             )
             .outerjoin(latest_trend_subq, latest_trend_subq.c.device_id == Device.device_id)
-            .outerjoin(shift_agg_subq, shift_agg_subq.c.device_id == Device.device_id)
             .outerjoin(health_config_subq, health_config_subq.c.device_id == Device.device_id)
             .where(Device.deleted_at.is_(None))
             .order_by(Device.device_name.asc())
@@ -161,6 +138,7 @@ class DashboardService:
         running_count = 0
         uptime_configured_count = 0
         fallback_health_candidates: List[Dict[str, Any]] = []
+        shift_service = ShiftService(self._session)
 
         for row in device_rows.all():
             runtime_status = RuntimeStatus.STOPPED.value
@@ -181,12 +159,12 @@ class DashboardService:
             if health_score is not None:
                 health_values.append(health_score)
 
-            uptime_percentage = None
-            planned_minutes = float(row.planned_minutes or 0)
-            effective_minutes = float(row.effective_minutes or 0)
-            if planned_minutes > 0:
+            uptime_response = await shift_service.calculate_uptime(row.device_id, row.tenant_id)
+            uptime_percentage = uptime_response.get("uptime_percentage")
+            if uptime_response.get("shifts_configured", 0) > 0:
                 uptime_configured_count += 1
-                uptime_percentage = round((effective_minutes / planned_minutes) * 100.0, 2)
+            if uptime_percentage is not None:
+                uptime_percentage = round(float(uptime_percentage), 2)
                 uptime_values.append(uptime_percentage)
 
             device_item = {
