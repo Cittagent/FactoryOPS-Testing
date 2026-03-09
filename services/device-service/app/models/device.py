@@ -57,6 +57,7 @@ class Device(Base):
     
     __tablename__ = "devices"
 
+
     __table_args__ = (
         {"mysql_charset": "utf8mb4", "mysql_collate": "utf8mb4_unicode_ci"},
     )
