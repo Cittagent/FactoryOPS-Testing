@@ -57,6 +57,10 @@ class Device(Base):
     
     __tablename__ = "devices"
     
+    __table_args__ = (
+        {"mysql_charset": "utf8mb4", "mysql_collate": "utf8mb4_unicode_ci"},
+    )
+    
     # Primary key - using business key for device_id
     device_id: Mapped[str] = mapped_column(String(50), primary_key=True)
     
