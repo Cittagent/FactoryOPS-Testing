@@ -54,6 +54,7 @@ class Device(Base):
     - RUNNING: telemetry received within TELEMETRY_TIMEOUT_SECONDS
     - STOPPED: no telemetry received within TELEMETRY_TIMEOUT_SECONDS or never received
     """
+
     
     __tablename__ = "devices"
 
